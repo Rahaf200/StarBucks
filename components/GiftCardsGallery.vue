@@ -74,13 +74,20 @@ const giftCards = ref<GiftCard[]>(props.customGiftCards);
   border: 1px solid #ddd;
   border-radius: 8px;
   overflow: hidden;
-  width: 200px; /* Increase the width of each card */
+  width: 300px; /* Increased the width of each card */
+  transition: transform 0.3s ease; /* Smooth transition for the card itself */
 }
 
 /* Image style */
 .card-image {
   width: 100%;
-  height: auto;
+  height: auto; /* Maintain aspect ratio */
   display: block;
+  transition: transform 0.3s ease; /* Smooth transition for the image */
+}
+
+/* Hover effect */
+.card:hover .card-image {
+  transform: translateY(-10px); /* Move the image up when hovered */
 }
 </style>

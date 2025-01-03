@@ -108,6 +108,14 @@ const featuredCards = [
     image: "/static/images/eGift.png", // Image for eGift card
     alt: "eGift Card",
   },
+  {
+    image: "/static/images/defy.png", // New image for "Defy" card
+    alt: "Defy Card",
+  },
+  {
+    image: "/static/images/green.png", // New image for "Green" card
+    alt: "Green Card",
+  },
 ];
 </script>
 

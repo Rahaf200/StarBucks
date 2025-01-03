@@ -6,19 +6,12 @@
       <div class="spacer"></div>
       <h2>Starbucks® Rewards</h2>
       <div class="spacer-small"></div>
-
-      <!-- Centered and Arial Font Text -->
-      <p class="centered-text">Join Starbucks Rewards to earn Stars for free food and</p>
-      <p class="centered-text">drinks, any way you pay. Get access to mobile ordering, a</p>
-      <p class="centered-text">birthday Reward, and more.</p>
+      <p class="centered-text">Join Starbucks Rewards to earn Stars for free food and drinks.</p>
     </div>
 
     <!-- Registration Form -->
     <div class="registration-form">
-      <!-- Required Fields Disclaimer -->
       <p class="required-field">* indicates required field</p>
-
-      <!-- Personal Information Section Title -->
       <p class="personal-info-title">Personal Information</p>
 
       <form @submit.prevent="submitForm">
@@ -42,7 +35,6 @@
           />
         </div>
 
-        <!-- Account Security -->
         <h2 class="account-security-title">Account Security</h2>
 
         <div class="form-group">
@@ -63,37 +55,23 @@
             placeholder="Create a password"
             required
           />
-          <small>
-            Create a password 8 to 25 characters long that includes at least 1
-            uppercase and 1 lowercase letter, 1 number, and 1 special character
-            (e.g., !, *).
-          </small>
+          <small>Create a password 8 to 25 characters long...</small>
         </div>
 
         <div class="form-group">
           <label>
-            <input
-              type="checkbox"
-              v-model="form.subscribe"
-            />
+            <input type="checkbox" v-model="form.subscribe" />
             Yes, I'd like email from Starbucks
           </label>
         </div>
 
         <div class="form-group">
-          <!-- Left Align the Text Here -->
           <label class="left-align">
-            <input
-              type="checkbox"
-              v-model="form.agreeToTerms"
-              required
-            />
-            I agree to the Starbucks Rewards Terms and Starbucks Card Terms and
-            have read the Starbucks Privacy Statement.
+            <input type="checkbox" v-model="form.agreeToTerms" required />
+            I agree to the terms
           </label>
         </div>
 
-        <!-- Right-aligned button -->
         <div class="button-container">
           <button type="submit" class="btn">Create account</button>
         </div>
@@ -104,11 +82,17 @@
 
 <script lang="ts">
 import { defineComponent, reactive } from 'vue';
+import { useRouter } from 'vue-router';
+import { auth } from '@/src/firebase'; // Update the path to match your project structure
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import FirestoreService from '@/src/firestoreservice'; // Update the path to match your project structure
 
 export default defineComponent({
   name: 'RegistrationForm',
   setup() {
-    // Form data
+    const router = useRouter();
+
+    // Reactive form state
     const form = reactive({
       firstName: '',
       lastName: '',
@@ -118,14 +102,51 @@ export default defineComponent({
       agreeToTerms: false,
     });
 
-    // Handle form submission
-    const submitForm = () => {
+    // Firestore service instance for the 'users' collection
+    const userService = new FirestoreService<{
+      firstName: string;
+      lastName: string;
+      email: string;
+      userId: string;
+      subscribe: boolean;
+    }>('users');
+
+    // Submit form handler
+    const submitForm = async () => {
       if (!form.agreeToTerms) {
         alert('You must agree to the terms and conditions.');
         return;
       }
-      console.log('Form Submitted:', form);
-      // Handle further logic like API calls here
+
+      try {
+        // Create a user with email and password
+        const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password);
+        const user = userCredential.user;
+
+        // Save user details to Firestore using Firebase user UID as the document ID
+        await userService.create(
+          {
+            firstName: form.firstName,
+            lastName: form.lastName,
+            email: form.email,
+            userId: user.uid,
+            subscribe: form.subscribe,
+          },
+          user.uid
+        );
+
+        alert('Account created successfully!');
+        // Redirect to a welcome page or clear the form
+        router.push('/home'); // Adjust the route as per your project
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          alert(`Error: ${error.message}`);
+          console.error('Error creating account:', error);
+        } else {
+          alert('An unknown error occurred.');
+          console.error('Unknown error:', error);
+        }
+      }
     };
 
     return {
@@ -137,12 +158,14 @@ export default defineComponent({
 </script>
 
 <style scoped>
+/* Container Style */
 .container {
   max-width: 600px;
   margin: auto;
   padding-top: 2rem;
 }
 
+/* Heading Text */
 .heading-text {
   text-align: center;
   margin-bottom: 2rem;
@@ -174,6 +197,7 @@ h2 {
   height: 0.5rem;
 }
 
+/* Registration Form Styles */
 .registration-form {
   max-width: 400px;
   margin: auto;
@@ -219,9 +243,9 @@ label {
   font-weight: bold;
 }
 
-input[type="text"],
-input[type="email"],
-input[type="password"] {
+input[type='text'],
+input[type='email'],
+input[type='password'] {
   width: 100%;
   padding: 0.5rem;
   border: 1px solid #ccc;
@@ -229,7 +253,7 @@ input[type="password"] {
   font-size: 1rem;
 }
 
-input[type="checkbox"] {
+input[type='checkbox'] {
   margin-right: 0.5rem;
 }
 
@@ -242,7 +266,7 @@ small {
 
 .btn {
   display: inline-block;
-  width: auto; /* Adjusted width */
+  width: auto;
   padding: 0.75rem;
   background-color: #00754a;
   color: #fff;

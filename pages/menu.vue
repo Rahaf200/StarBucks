@@ -2,7 +2,6 @@
   <div class="menu-page">
     <!-- Top section: Navbar and TopNavBar -->
     <div class="top-nav-section">
-      <!-- Use the imported Navbar component -->
       <Navbar
         logoSrc="/static/images/Starbuckslogo.png"
         logoAlt="Starbucks Logo"
@@ -15,14 +14,12 @@
         :showSignIn="true"
         :showJoinNow="true"
       />
-
-      <!-- Add the TopNavBar component below the Navbar -->
       <TopNavBar />
     </div>
 
     <!-- Bottom section: Sidebar and Main Content -->
     <div class="bottom-section">
-      <!-- Use the SidebarMenu component on the left side -->
+      <!-- Sidebar -->
       <div class="sidebar-container">
         <SidebarMenu />
       </div>
@@ -61,12 +58,14 @@
       </div>
     </div>
 
+    <!-- Sticky StoreSelect at the bottom -->
+    <div class="store-select-container">
+      <StoreSelect />
+    </div>
+
     <!-- Footer Section -->
     <div class="footer-section">
-      <!-- Include FooterMenu -->
       <FooterMenu />
-
-      <!-- Include Footer -->
       <Footer />
     </div>
   </div>
@@ -77,12 +76,13 @@ import Navbar from '@/components/navbar.vue';
 import TopNavBar from '@/components/TopNavBar.vue';
 import SidebarMenu from '@/components/SidebarMenu.vue';
 import Food from '@/components/Food.vue';
-import FooterMenu from '@/components/FooterMenu.vue'; // Import FooterMenu
-import Footer from '@/components/Footer.vue'; // Import Footer
+import FooterMenu from '@/components/FooterMenu.vue'; 
+import Footer from '@/components/Footer.vue';
+import StoreSelect from '@/components/store_select.vue'; // Import StoreSelect component
 
 // Define the data for the "Food" section
 const foodColumn1 = [
-  { name: "Hot Breakfast", imagePath: "/static/images/hotbreakfast.png" },
+  { name: "Hot Breakfast", imagePath: "/static/images/hotbreakfast.png", url: "/egg" },
   { name: "Bakery", imagePath: "/static/images/Bakery.png" },
   { name: "Snacks & Sweets", imagePath: "/static/images/Snacks.png" },
 ];
@@ -132,51 +132,60 @@ const merchandiseColumn2 = [
 
 <style scoped>
 .menu-page {
-  display: flex; /* Align the top and bottom sections vertically */
-  flex-direction: column; /* Stack top and bottom sections */
+  display: flex;
+  flex-direction: column;
   font-family: Arial, sans-serif;
 }
 
-/* Top section styling */
-.top-nav-section {
-  flex-shrink: 0; /* Prevent this section from shrinking */
-}
-
-/* Bottom section: Sidebar + Main content */
+/* Make sure the bottom section grows to fit content */
 .bottom-section {
-  display: flex; /* Side-by-side layout for sidebar and main content */
+  display: flex;
+  flex-grow: 1; /* Take up remaining space */
   padding: 20px;
 }
 
 .sidebar-container {
-  width: 250px; /* Sidebar width */
-  margin-right: 20px; /* Space between sidebar and content */
+  width: 250px;
+  margin-right: 20px;
 }
 
 .main-content {
-  flex-grow: 1; /* Take up the remaining space */
+  flex-grow: 1;
   padding: 2rem;
 }
 
+/* Sticky StoreSelect at the bottom of the page */
+.store-select-container {
+  position: fixed; /* Fixed at the bottom of the page */
+  bottom: 0;
+  left: 0;
+  width: 100%; /* Full screen width */
+  background-color: white; /* Optional: Add background to prevent overlap */
+  padding: 1rem; /* Padding for the component */
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1); /* Shadow on top for depth */
+  z-index: 10; /* Ensure it's above other content */
+}
+
+/* Footer Section */
 .footer-section {
-  background-color: #f8f8f8; /* Light gray background for footer */
+  background-color: #f8f8f8;
   padding: 2rem;
   margin-top: 2rem;
-  border-top: 1px solid #e0e0e0; /* Very light line above the footer */
+  border-top: 1px solid #e0e0e0;
 }
 
 @media (max-width: 768px) {
   .bottom-section {
-    flex-direction: column; /* Stack sidebar and main content vertically on smaller screens */
+    flex-direction: column;
   }
 
   .sidebar-container {
-    width: 100%; /* Sidebar takes full width on mobile */
-    margin-right: 0; /* Remove right margin */
+    width: 100%;
+    margin-right: 0;
   }
 
   .main-content {
-    width: 100%; /* Main content takes full width */
+    width: 100%;
   }
 }
 </style>

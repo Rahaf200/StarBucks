@@ -30,10 +30,11 @@
   </div>
 </template>
 
-
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
-
+import { auth } from '@/src/firebase'; // Firebase imports
+import { signInWithEmailAndPassword } from 'firebase/auth'; // Firebase sign-in method
+import { useRouter } from 'vue-router'; // To handle redirection after login
 
 export default defineComponent({
   name: 'SignInForm',
@@ -41,12 +42,37 @@ export default defineComponent({
     const username = ref<string>('');
     const password = ref<string>('');
     const rememberMe = ref<boolean>(false);
+    const router = useRouter(); // Use router to navigate to other pages
 
+    // Handle sign-in form submission
+    const handleSubmit = async (): Promise<void> => {
+      try {
+        // Sign in with email and password
+        const userCredential = await signInWithEmailAndPassword(auth, username.value, password.value);
+        const user = userCredential.user;
 
-    const handleSubmit = (): void => {
-      console.log('Form submitted:', { username: username.value, password: password.value, rememberMe: rememberMe.value });
+        // Check if "Remember me" is selected to maintain session
+        if (rememberMe.value) {
+          localStorage.setItem('user', JSON.stringify(user)); // Store user in localStorage
+        }
+
+        // User successfully signed in, you can handle redirects or further actions here
+        console.log('Signed in successfully', user);
+        alert('Signed in successfully!');
+        
+        // Redirect to dashboard or home page after successful login
+        router.push('/dashboard'); // You can change '/dashboard' to any route you'd like to redirect to
+
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          alert(`Error: ${error.message}`);
+          console.error('Error signing in:', error);
+        } else {
+          alert('An unknown error occurred.');
+          console.error('Unknown error:', error);
+        }
+      }
     };
-
 
     return {
       username,
@@ -57,7 +83,6 @@ export default defineComponent({
   },
 });
 </script>
-
 
 <style scoped>
 /* Wrapper Styling */

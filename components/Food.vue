@@ -7,16 +7,20 @@
       <!-- Column 1 (using prop data) -->
       <div class="food-column">
         <div v-for="item in column1" :key="item.name" class="food-item">
-          <img :src="item.imagePath" :alt="item.name" class="food-image" />
-          <p>{{ item.name }}</p>
+          <button @click="goToItem(item.url)">
+            <img :src="item.imagePath" :alt="item.name" class="food-image" />
+            <p>{{ item.name }}</p>
+          </button>
         </div>
       </div>
 
       <!-- Column 2 (using prop data) -->
       <div class="food-column">
         <div v-for="item in column2" :key="item.name" class="food-item">
-          <img :src="item.imagePath" :alt="item.name" class="food-image" />
-          <p>{{ item.name }}</p>
+          <button @click="goToItem(item.url)">
+            <img :src="item.imagePath" :alt="item.name" class="food-image" />
+            <p>{{ item.name }}</p>
+          </button>
         </div>
       </div>
     </div>
@@ -24,12 +28,14 @@
 </template>
 
 <script lang="ts" setup>
+import { useRouter } from 'vue-router';
 import { defineProps } from 'vue';
 
 // Define the type for each food item
 interface FoodItem {
   name: string;
   imagePath: string;
+  url?: string; // Make 'url' optional to prevent errors if it's not provided
 }
 
 // Define props for the component
@@ -39,7 +45,14 @@ const props = defineProps<{
   column2: FoodItem[]; // Array of food items for the second column
 }>();
 
-// No need to define column1 and column2 here, they're already passed as props
+const router = useRouter();
+
+// Navigate to the URL specified in the food item
+const goToItem = (url?: string) => {
+  if (url) {
+    router.push(url); // Only navigate if URL is defined
+  }
+};
 </script>
 
 <style scoped>
@@ -63,21 +76,23 @@ const props = defineProps<{
 
 .food-grid {
   display: flex;
-  justify-content: flex-start; /* Align columns to the start of the container */
-  gap: 5cm; /* Space between the two columns */
+  justify-content: space-between; /* Space the columns apart */
+  gap: 20px; /* Adjust space between columns */
   margin-top: 20px;
   width: 80%; /* Set a width for alignment */
+  flex-wrap: wrap; /* Allow columns to wrap on small screens */
 }
 
 .food-column {
   display: flex;
   flex-direction: column;
   gap: 20px; /* Space between items in a column */
+  flex-basis: 45%; /* Allow two columns to share equal width */
 }
 
 .food-item {
   display: flex;
-  align-items: center;
+  align-items: center; /* Align image and text horizontally */
   gap: 15px; /* Space between image and text */
   text-align: left;
 }
@@ -94,5 +109,16 @@ const props = defineProps<{
   font-size: 16px;
   font-weight: bold;
   margin: 0;
+}
+
+button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+button:hover {
+  opacity: 0.8;
 }
 </style>
