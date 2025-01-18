@@ -32,57 +32,58 @@
 
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
-import { auth } from '@/src/firebase'; // Firebase imports
-import { signInWithEmailAndPassword } from 'firebase/auth'; // Firebase sign-in method
 import { useRouter } from 'vue-router'; // To handle redirection after login
+import { useFirestore } from '@/src/firestore'; // Import Firestore functions
+import { useUserStore } from '../src/user'; // Import user store
+import { useCartStore } from '@/src/cart'; // Import cart store
 
 export default defineComponent({
   name: 'SignInForm',
   setup() {
-    const username = ref<string>('');
-    const password = ref<string>('');
-    const rememberMe = ref<boolean>(false);
+    const firestore = useFirestore();
+    const userStore = useUserStore(); // Access user store
+    const cartStore = useCartStore(); // Access cart store
+    const username = ref<string>(''); // email input
+    const password = ref<string>(''); // password input
+    const rememberMe = ref<boolean>(false); // checkbox state for "remember me"
     const router = useRouter(); // Use router to navigate to other pages
 
-    // Handle sign-in form submission
-    const handleSubmit = async (): Promise<void> => {
-      try {
-        // Sign in with email and password
-        const userCredential = await signInWithEmailAndPassword(auth, username.value, password.value);
-        const user = userCredential.user;
+    const handleSubmit = async () => {
+  try {
+    const userCredential = await firestore.loginWithEmailAndPassword(username.value, password.value);
+    const user = userCredential.user;
 
-        // Check if "Remember me" is selected to maintain session
-        if (rememberMe.value) {
-          localStorage.setItem('user', JSON.stringify(user)); // Store user in localStorage
-        }
+    if (user.email) { // Check if email is not null
+      const userCart = await firestore.getUserCartFromFirestore(user.email);
 
-        // User successfully signed in, you can handle redirects or further actions here
-        console.log('Signed in successfully', user);
-        alert('Signed in successfully!');
-        
-        // Redirect to dashboard or home page after successful login
-        router.push('/dashboard'); // You can change '/dashboard' to any route you'd like to redirect to
-
-      } catch (error: unknown) {
-        if (error instanceof Error) {
-          alert(`Error: ${error.message}`);
-          console.error('Error signing in:', error);
-        } else {
-          alert('An unknown error occurred.');
-          console.error('Unknown error:', error);
-        }
+      userStore.setUser({
+        uid: user.uid,
+        firstName: '', // Assuming you want to fetch firstName and lastName too
+        lastName: '',
+        email: user.email,
+        cartItems: userCart
+      });
+    
+      if (rememberMe.value) {
+        localStorage.setItem('user', JSON.stringify(user));
       }
-    };
 
-    return {
-      username,
-      password,
-      rememberMe,
-      handleSubmit,
+
+      router.push('/home');
+    } else {
+      throw new Error('User email is not available');
+    }
+   } catch (error: unknown) {
+    console.error('Error signing in:', error);
+   alert(error instanceof Error ? `Error: ${error.message}` : 'Unknown error occurred.');
+  }
+
     };
+    return { username, password, rememberMe, handleSubmit };
   },
 });
-</script>
+
+</script> 
 
 <style scoped>
 /* Wrapper Styling */

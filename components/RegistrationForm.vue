@@ -1,6 +1,6 @@
 <template>
   <div class="container">
-    <!-- Heading Text Section (Outside the registration form) -->
+    <!-- Heading Text Section -->
     <div class="heading-text">
       <h1 class="create-account">Create an account</h1>
       <div class="spacer"></div>
@@ -83,16 +83,17 @@
 <script lang="ts">
 import { defineComponent, reactive } from 'vue';
 import { useRouter } from 'vue-router';
-import { auth } from '@/src/firebase'; // Update the path to match your project structure
+import { auth, db } from '@/src/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import FirestoreService from '@/src/firestoreservice'; // Update the path to match your project structure
+import { doc, setDoc } from 'firebase/firestore';
+import { useUserStore } from '@/src/user'; // Import user store
 
 export default defineComponent({
   name: 'RegistrationForm',
   setup() {
     const router = useRouter();
+    const userStore = useUserStore(); // Initialize user store
 
-    // Reactive form state
     const form = reactive({
       firstName: '',
       lastName: '',
@@ -102,16 +103,6 @@ export default defineComponent({
       agreeToTerms: false,
     });
 
-    // Firestore service instance for the 'users' collection
-    const userService = new FirestoreService<{
-      firstName: string;
-      lastName: string;
-      email: string;
-      userId: string;
-      subscribe: boolean;
-    }>('users');
-
-    // Submit form handler
     const submitForm = async () => {
       if (!form.agreeToTerms) {
         alert('You must agree to the terms and conditions.');
@@ -119,43 +110,50 @@ export default defineComponent({
       }
 
       try {
-        // Create a user with email and password
         const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password);
         const user = userCredential.user;
 
-        // Save user details to Firestore using Firebase user UID as the document ID
-        await userService.create(
-          {
-            firstName: form.firstName,
-            lastName: form.lastName,
-            email: form.email,
-            userId: user.uid,
-            subscribe: form.subscribe,
-          },
-          user.uid
-        );
+        const userDocRef = doc(db, 'users', user.uid);
+        await setDoc(userDocRef, {
+          firstName: form.firstName,
+          lastName: form.lastName,
+          email: form.email,
+          subscribe: form.subscribe,
+          cart: [],
+        });
 
-        alert('Account created successfully!');
-        // Redirect to a welcome page or clear the form
-        router.push('/home'); // Adjust the route as per your project
-      } catch (error: unknown) {
-        if (error instanceof Error) {
-          alert(`Error: ${error.message}`);
-          console.error('Error creating account:', error);
-        } else {
-          alert('An unknown error occurred.');
-          console.error('Unknown error:', error);
-        }
-      }
+         // Create user data
+    const userData = {
+      uid: user.uid,
+      firstName: form.firstName,
+      lastName: form.lastName,
+      email: form.email,
+      cartItems: [],
+    };
+ 
+    // Set user data in user store
+    userStore.setUser(userData);
+
+    // Save user data in localStorage
+    localStorage.setItem('user', JSON.stringify(userData));
+
+    alert('Account created successfully!');
+    router.push('/home');
+  } catch (error: unknown) {
+    console.error('Error creating account:', error);
+    alert(
+      error instanceof Error
+        ? `Error: ${error.message}`
+        : 'An unknown error occurred.'
+    );
+  }
     };
 
-    return {
-      form,
-      submitForm,
-    };
+    return { form, submitForm };
   },
 });
 </script>
+
 
 <style scoped>
 /* Container Style */

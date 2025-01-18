@@ -65,8 +65,10 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { collection, addDoc } from "firebase/firestore";
-import { db } from '~/src/firebase';
+import { useUserStore } from '@/src/user'; // To access the user and cart data
+import { useCartStore } from '@/src/cart'; // To access and modify the cart
+import { useFirestore } from '@/src/firestore'; // Firestore functions
+
 import Navbar from '~/components/navbar.vue';
 import OrderButton from '~/components/order_button.vue';
 import Ingr from '~/components/ingr.vue';
@@ -74,6 +76,8 @@ import FooterMenu from '~/components/FooterMenu.vue';
 import Footer from '~/components/Footer.vue';
 import StoreSelector from '~/components/store_select.vue';
 import CustomizeButton from '~/components/button.vue'; // Import the CustomizeButton component
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '~/src/firebase';
 
 // Product details
 const product = ref({
@@ -81,22 +85,67 @@ const product = ref({
   image: '/static/images/HotBreakfast.png',
   servingSize: '1 sandwich',
   price: 5.25, // Example price
+  short_description: 'A tasty sandwich with egg, pesto, and mozzarella.', // Example description
+  full_description: 'A delicious sandwich filled with eggs, pesto, mozzarella, and served on fresh bread.',
+  productName: 'Egg, Pesto & Mozzarella Sandwich',
+  totalPrice: 5.25, // Total price of the item (you could modify this if you want to calculate based on quantity)
+  id: 1, // Add a numeric ID or use a generated unique number
 });
+
+// Accessing the user and cart stores
+const userStore = useUserStore();
+const cartStore = useCartStore();
+const firestore = useFirestore(); // Get the Firestore functions
 
 // Add to Cart function
 const addToCart = async () => {
   try {
     const cartItem = {
+      id: product.value.id, // Ensure the id is a number
       name: product.value.name,
       image: product.value.image,
       servingSize: product.value.servingSize,
       price: product.value.price,
       quantity: 1,
+      short_description: product.value.short_description,
+      full_description: product.value.full_description,
+      productName: product.value.productName,
+      totalPrice: product.value.totalPrice,
     };
 
-    // Add the cart item to the Firestore cart collection
-    await addDoc(collection(db, "cart"), cartItem);
-    alert(`${product.value.name} has been added to your cart!`);
+    // Check if the product already exists in the cart
+    const existingProduct = cartStore.cartItems.find(item => item.id === cartItem.id);
+    if (existingProduct) {
+      existingProduct.quantity += 1; // Increase quantity if already in the cart
+      existingProduct.totalPrice = existingProduct.price * existingProduct.quantity; // Update total price
+    } else {
+      cartStore.cartItems.push(cartItem); // Add new product to the cart
+    }
+
+      // Update user store with the new cart
+     if (userStore.user) {
+      const updatedUser = {
+        ...userStore.user, // Spread the existing user data
+        cartItems: cartStore.cartItems, // Update the cartItems with the latest data
+      };
+
+
+     // Ensure all required fields are defined before calling setUser
+     if (updatedUser.uid && updatedUser.firstName && updatedUser.lastName && updatedUser.email) {
+        userStore.setUser(updatedUser);
+      } else {
+        console.error('User data is incomplete.');
+      }
+    }
+    
+    // Save the updated cart to Firestore
+    if (userStore.user?.uid) {
+      const userDocRef = doc(db, 'users', userStore.user.uid);
+      await setDoc(userDocRef, { cart: cartStore.cartItems }, { merge: true }); // Update cart in Firestore
+      console.log('Cart saved to Firestore.');
+    }
+
+    alert(product.value.name + ' has been added to your cart!');
   } catch (err) {
     console.error("Failed to add to cart:", err);
     alert("Failed to add to cart. Please try again.");
@@ -213,4 +262,4 @@ const addToCart = async () => {
 .footer-container {
   margin-top: 1rem;
 }
-</style>
+</style> 

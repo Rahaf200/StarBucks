@@ -2,11 +2,10 @@
   <nav class="navbar">
     <a href="/home">
       <div class="logo">
-      <!-- Starbucks logo -->
-      <img src="/static/images/Starbuckslogo.png" alt="Starbucks Logo" class="logo-image" />
-    </div>
-  </a>
-   
+        <img src="/static/images/Starbuckslogo.png" alt="Starbucks Logo" class="logo-image" />
+      </div>
+    </a>
+
     <ul class="nav-links">
       <li><a href="/menu" class="nav-link">Menu</a></li>
       <li><a href="/rewards" class="nav-link">Rewards</a></li>
@@ -15,19 +14,33 @@
 
     <div class="nav-actions">
       <a href="/find-store" class="find-store">Find a store</a>
-      <button class="sign-in" @click="goToSignIn">Sign in</button>
-      <button class="join-now"@click="goToJoin">Join now</button>
-     
-      
+
+      <!-- Only show these buttons if the user is NOT signed in -->
+      <button v-if="!isSignedIn" class="sign-in" @click="goToSignIn">Sign in</button>
+      <button v-if="!isSignedIn" class="join-now" @click="goToJoin">Join now</button>
+
+      <!-- Show Welcome message and Sign Out button if signed in -->
+      <div v-if="isSignedIn" class="user-info">
+        <span class="welcome-message">Welcome, {{ userName }}</span>
+        <button class="sign-out" @click="goToSignOut">Sign out</button>
+      </div>
     </div>
   </nav>
 </template>
 
 <script setup lang="ts">
+import { computed, onMounted } from 'vue';
+import { useUserStore } from '@/src/user';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
+const userStore = useUserStore();
 
+// Check if user is signed in
+const isSignedIn = computed(() => userStore.isSignedIn);
+const userName = computed(() => `${userStore.user?.firstName} ${userStore.user?.lastName}`);
+
+// Navigation functions
 const goToSignIn = () => {
   router.push('/sign-in');
 };
@@ -36,33 +49,46 @@ const goToJoin = () => {
   router.push('/join');
 };
 
-const goToMenu = () => {
-  router.push('/menu');
+const goToSignOut = () => {
+  // Clear user data from store and localStorage
+  userStore.setUser({
+    uid: '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    cartItems: []
+  });
+  localStorage.removeItem('user'); // Clear user from localStorage
+  router.push('/home'); // Redirect to home after signing out
 };
 
-const goToRewards = () => {
-  router.push('/rewards');
-};
-
-const goToGiftcard = () => {
-  router.push('/gift-cards');
-};
-
-const goToFindStore = () => {
-  router.push('/find-store');
-};
+// Check if there's a saved session in local storage when the component is mounted
+onMounted(() => {
+  const savedUser = localStorage.getItem('user');
+  if (savedUser) {
+    const parsedUser = JSON.parse(savedUser);
+    userStore.setUser({
+      uid: parsedUser.uid,
+      firstName: parsedUser.firstName,
+      lastName: parsedUser.lastName,
+      email: parsedUser.email,
+      cartItems: parsedUser.cartItems || []
+    });
+  }
+});
 </script>
+
 
 <style scoped>
 /* Styling the navigation bar */
 .navbar {
   display: flex;
-  align-items: center; /* Align items vertically in the center */
-  justify-content: flex-start; /* Ensure everything aligns to the left */
+  align-items: center;
+  justify-content: flex-start;
   padding: 1rem 2rem;
   background-color: white;
   border-bottom: 1px solid #ddd;
-  font-family: Arial, sans-serif; /* Apply Arial font to the entire navbar */
+  font-family: Arial, sans-serif;
 }
 
 .logo-image {
@@ -75,30 +101,30 @@ const goToFindStore = () => {
   gap: 2rem;
   list-style: none;
   padding: 0;
-  margin-left: 3rem; /* Adds space between the logo and the menu */
+  margin-left: 3rem;
 }
 
 .nav-link {
   text-decoration: none;
   color: black;
-  font-size: 1rem; /* Adjusted font size to make the text smaller */
+  font-size: 1rem;
   font-weight: bold;
-  text-transform: uppercase; /* Converts text to uppercase */
+  text-transform: uppercase;
 }
 
 .nav-actions {
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-left: auto; /* Push the nav actions (buttons) to the right */
+  margin-left: auto;
 }
 
 .find-store {
   text-decoration: none;
   color: black;
-  font-size: 1rem; /* Increased font size */
-  font-weight: bolder; /* Made the text bolder */
-  margin-right: 2rem; /* Added margin to the right to move it a little left */
+  font-size: 1rem;
+  font-weight: bolder;
+  margin-right: 2rem;
 }
 
 .sign-in,
@@ -106,10 +132,10 @@ const goToFindStore = () => {
   background: none;
   border: 1px solid black;
   color: black;
-  padding: 0.7rem 1.5rem; /* Reduced padding */
+  padding: 0.7rem 1.5rem;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 1rem; /* Reduced font size */
+  font-size: 1rem;
 }
 
 .join-now {
@@ -121,5 +147,16 @@ const goToFindStore = () => {
 .sign-in:hover,
 .join-now:hover {
   opacity: 0.8;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.welcome-message {
+  font-size: 1rem;
+  font-weight: bold;
 }
 </style>

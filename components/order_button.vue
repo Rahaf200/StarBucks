@@ -14,17 +14,19 @@ import { defineEmits } from 'vue';
 // Define the event that this component can emit
 const emit = defineEmits(['add-to-order']);
 
-// Define the product data that will be passed when clicked (you may replace this with dynamic data)
-const product = {
-  productId: 'sample-product-id', // Replace with the actual product ID
-  quantity: 1,
-  totalPrice: 100, // Replace with the calculated total price for the product
+// Product data that is passed when clicked (this could be dynamic data from a sandwich object)
+const sandwich = {
+  sandwichName: 'Egg, Pesto & Mozzarella Sandwich',
+  sandwichImage: '/static/images/HotBreakfast.png',
+  price: 5.25,
+  productId: 'sample-product-id',  // Replace with actual product ID
+  quantity: 1, // default quantity
+  totalPrice: 5.25, // calculated total price for this sandwich
 };
 
 function handleClick() {
-  console.log('Item added to order!');
-  // Emit the custom event to notify the parent component to add the item to the cart
-  emit('add-to-order', product); // Send the product object as data
+  // Emit the event to notify the parent component to add the item to the cart
+  emit('add-to-order', sandwich); // Send the sandwich object as data
 }
 </script>
 
@@ -57,4 +59,4 @@ function handleClick() {
   justify-content: center;
   margin-top: 2rem;
 }
-</style>
+</style>  

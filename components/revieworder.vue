@@ -17,7 +17,7 @@
     <!-- Content Section -->
     <div class="content">
       <!-- Title Section -->
-      <h1 class="title">Review order ({{ orderCount }})</h1>
+      <h1 class="title">Review order</h1>
       <p class="subtitle">Ready in around 4–7 minutes</p>
 
       <!-- Pickup Store Section -->
@@ -44,48 +44,48 @@
       </div>
 
       <!-- Cart Items Section -->
-      <div class="cart-items">
-        <h2 class="cart-items-title">Your Cart</h2>
-        <div v-for="(item, index) in cartItems" :key="item.id" class="cart-item">
-          <p class="cart-item-name">{{ item.productName }}</p>
-          <p class="cart-item-quantity">Quantity: {{ item.quantity }}</p>
-          <p class="cart-item-price">Price: ${{ item.price }}</p>
-          <p class="cart-item-total">Total: ${{ item.totalPrice }}</p>
+      <div class="cart-items" v-if="cartitems.length">
+        <div class="cart-item" v-for="(item, index) in cartitems" :key="index">
+          <img :src="item.image" alt="Product Image" class="cart-item-image" />
+          <div class="cart-item-details">
+            <p class="cart-item-name">{{ item.name }}</p>
+            <p class="cart-item-quantity">Qty: {{ item.quantity }}</p>
+            <p class="cart-item-price">${{ item.price }}</p>
+          </div>
         </div>
       </div>
+
+      <!-- Empty Cart Message -->
+      <p v-else class="empty-cart-message">Your cart is empty. Add items to get started!</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { defineProps, ref } from 'vue';
+import { ref, type PropType } from 'vue';
 import { useRouter } from 'vue-router';
 
-// Define a type for Cart Item
-interface CartItem {
-  id: string;
-  productName: string;
-  quantity: number;
-  price: number;
-  totalPrice: number;
-}
+const props = defineProps({
+  cartitems: {
+    type: Array as PropType<{ name: string; price: number; quantity: number; image: string }[]>,
+    required: true,
+  },
+});
 
-// Define props to accept cartItems from parent component
-const props = defineProps<{
-  cartItems: CartItem[];
-}>();
-
-// Define reactive state
-const orderCount = ref<number>(props.cartItems.length); // Set order count based on cartItems
 const storeName = ref<string>('Oasis Travel Center');
 const distance = ref<number>(24);
 
-// Use router for navigation
 const router = useRouter();
 const goBack = () => {
-  router.back();
+  if (window.history.length > 1) {
+    router.back(); // Navigate back if there is a history
+  } else {
+    router.push('/home'); // Fallback to the home page
+  }
 };
 </script>
+
+
 
 <style scoped>
 /* General Container Styling */
@@ -206,29 +206,51 @@ const goBack = () => {
 /* Cart Items Section */
 .cart-items {
   margin-top: 2rem;
-  padding-top: 1rem;
-  border-top: 1px solid #555;
-}
-
-.cart-items-title {
-  font-size: 1.5rem;
-  color: #fff;
-  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .cart-item {
-  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background-color: #324e45;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.cart-item-name,
-.cart-item-quantity,
-.cart-item-price,
-.cart-item-total {
-  font-size: 1rem;
-  color: #ddd;
+.cart-item-image {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.cart-item-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  color: #fff;
 }
 
 .cart-item-name {
   font-weight: bold;
+  font-size: 1rem;
 }
-</style>
+
+.cart-item-quantity,
+.cart-item-price {
+  font-size: 0.9rem;
+  color: #ccc;
+}
+
+/* Empty Cart Message */
+.empty-cart-message {
+  margin-top: 2rem;
+  font-size: 1.2rem;
+  text-align: center;
+  color: #ccc;
+}
+</style> 

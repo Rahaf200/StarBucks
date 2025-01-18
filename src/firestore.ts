@@ -1,151 +1,148 @@
-import { db } from './firebase'; // Firebase setup
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  updateDoc,
-  setDoc,
-  deleteDoc,
-  onSnapshot,
-} from 'firebase/firestore';
+import { auth, db } from '@/src/firebase';
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import type  { User } from '@/src/types/User';
+import type { Product } from '@/src/types/Product';
+import { useUserStore } from './user';
+import { createUserWithEmailAndPassword, getRedirectResult, signInWithEmailAndPassword,signOut } from 'firebase/auth';
+import { useCartStore } from './cart';
 
-// Define interfaces for better typing
-export interface CartItem {
-  productId: string;
-  quantity: number;
-  totalPrice: number;
-}
+export function useFirestore() {
+  const userStore = useUserStore()
+  const cartStore = useCartStore()
 
-export interface User {
-  email: string;
-  firstName: string;
-  lastName: string;
-  subscribe: boolean;
-  userId: string;
-}
-
-class FirestoreService {
-  private userId: string;
-
-  constructor(userId: string) {
-    this.userId = userId;
-  }
-
-  // --------- User Management ---------
-
-  async createUser(user: User): Promise<void> {
+  const addUserToFirestore = async (user : User) => {
     try {
-      const userDocRef = doc(db, 'users', user.userId);
-      await setDoc(userDocRef, user);
-    } catch (error) {
-      console.error('Error creating user:', error);
-      throw new Error('Failed to create user');
+      const docRef = doc(db, 'users', user.email)
+      await setDoc(docRef, {
+        id: user.uid,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        cartItems: user.cartItems
+      })
+      console.log('Document written with ID: ', docRef.id)
+    }
+    catch (error) {
+      console.error('Error adding user to FireStore: ', error)
     }
   }
 
-  async fetchAllUsers(): Promise<User[]> {
+  const getUserCartFromFirestore = async (email : string) => {
     try {
-      const usersCollectionRef = collection(db, 'users');
-      const snapshot = await getDocs(usersCollectionRef);
-      return snapshot.docs.map((doc) => ({
-        ...(doc.data() as User),
-        userId: doc.id,
-      }));
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      throw new Error('Failed to fetch users');
-    }
-  }
-
-  async fetchUserById(userId: string): Promise<User | null> {
-    try {
-      const userDocRef = doc(db, 'users', userId);
-      const userDoc = await getDoc(userDocRef);
-      if (userDoc.exists()) {
-        return { ...(userDoc.data() as User), userId: userDoc.id };
+      const docRef = await getDoc(doc(db, 'users', email))
+      if(docRef.exists()){
+        console.log('im here')
+        return docRef.data().cartItems
       }
-      return null;
-    } catch (error) {
-      console.error('Error fetching user by ID:', error);
-      throw new Error('Failed to fetch user');
+      return []
+    }
+    catch(error){
+      console.error('Error retrieving user cart from FireStore', error)
+      return []
     }
   }
 
-  // --------- Cart Management ---------
-
-  async getCartByUserId(): Promise<CartItem[]> {
-    try {
-      const cartDocRef = doc(db, 'carts', this.userId);
-      const cartDoc = await getDoc(cartDocRef);
-      if (cartDoc.exists()) {
-        const cartData = cartDoc.data();
-        return cartData?.items || [];
+  const saveUserCartToFirestore = async (cartItems: Product[]) => {
+    try{
+      const user = userStore.user
+      if(user?.email){
+        const docRef = doc(db, 'users', user.email)
+        await updateDoc(docRef, {
+          id: user.uid,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          cartItems: cartItems
+        })
       }
-      return [];
-    } catch (error) {
-      console.error('Error fetching cart:', error);
-      throw new Error('Failed to fetch cart');
+    }
+    catch(error){
+      console.log('Error saving user cart to FireStore', error)
     }
   }
 
-  async createCart(cartItem: CartItem): Promise<void> {
-    try {
-      const cartDocRef = doc(db, 'carts', this.userId);
-      const cartDoc = await getDoc(cartDocRef);
+  const checkEmailExists = async (email: string) => {
+    try{
+      const docRef = await getDoc(doc(db, 'users', email))
+      return docRef.exists()
+    }
+    catch(error){
+      console.error('Error checking email in FireStore', error)
+      return false
+    }
+  }
 
-      if (cartDoc.exists()) {
-        const cartData = cartDoc.data();
-        const items = cartData?.items || [];
-        const existingItemIndex = items.findIndex(
-          (item: CartItem) => item.productId === cartItem.productId
-        );
+  const loginWithEmailAndPassword = async (email : string, password : string) => {
+    return signInWithEmailAndPassword(auth, email, password)
+  }
 
-        if (existingItemIndex > -1) {
-          items[existingItemIndex].quantity += cartItem.quantity;
-          items[existingItemIndex].totalPrice += cartItem.totalPrice;
-        } else {
-          items.push(cartItem);
+  const registerWithEmailAndPassword = async (email : string, password : string, fName: string, lName: string) => {
+    try{
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+      const user = {
+        uid: userCredential.user?.uid ?? '',
+        firstName: fName,
+        lastName: lName,
+        email: email,
+        cartItems: []
+      }
+      userStore.setUser(user)
+      return userCredential
+    }
+    catch(error){
+      console.error('Error creating user', error)
+    }
+  }
+
+  const logout = async () => {
+    await signOut(auth)
+    userStore.setUser({
+      uid: '',
+      firstName: '',
+      lastName: '',
+      email: '',
+      cartItems: []
+    })
+  }
+
+  const updateUserInfoInFirestore = async () => {
+    const user = auth.currentUser
+    if(user){
+      const docRef = await getDoc(doc(db, 'users', user.email ?? ''))
+      if(docRef.exists()){
+        const userData = docRef.data()
+        const userCart = userData.cartItems ?? []
+        if(userStore.cartItems.length === 0){
+          userStore.setUser({
+            uid: user.uid,
+            firstName: userData?.firstName ?? '',
+            lastName: userData?.lastName ?? '',
+            email: user.email ?? '',
+            cartItems: userCart
+          })
+          userStore.cartItems = userCart
         }
-
-        await updateDoc(cartDocRef, { items });
-      } else {
-        await setDoc(cartDocRef, { userId: this.userId, items: [cartItem] });
       }
-    } catch (error) {
-      console.error('Error creating cart:', error);
-      throw new Error('Failed to create cart');
     }
   }
 
-  async deleteCartItem(productId: string): Promise<void> {
-    try {
-      const cartDocRef = doc(db, 'carts', this.userId);
-      const cartDoc = await getDoc(cartDocRef);
-
-      if (cartDoc.exists()) {
-        const cartData = cartDoc.data();
-        const updatedItems = cartData?.items.filter(
-          (item: CartItem) => item.productId !== productId
-        );
-
-        await updateDoc(cartDocRef, { items: updatedItems });
-      }
-    } catch (error) {
-      console.error('Error deleting cart item:', error);
-      throw new Error('Failed to delete cart item');
+  const updateCartInFirestore = async () => {
+    const user = auth.currentUser
+    if(user && user.email){
+      cartStore.cartItems = await getUserCartFromFirestore(user.email)
     }
   }
 
-  listenToCart(callback: (cartItems: CartItem[]) => void): () => void {
-    const cartDocRef = doc(db, 'carts', this.userId);
-    return onSnapshot(cartDocRef, (doc) => {
-      if (doc.exists()) {
-        const cartData = doc.data();
-        callback(cartData?.items || []);
-      }
-    });
-  }
-}
 
-export default FirestoreService;
+  return {
+    addUserToFirestore,
+    getUserCartFromFirestore,
+    saveUserCartToFirestore,
+    checkEmailExists,
+    loginWithEmailAndPassword,
+    registerWithEmailAndPassword,
+    logout,
+    updateUserInfoInFirestore,
+    updateCartInFirestore,
+  }
+} 
