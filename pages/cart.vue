@@ -1,159 +1,262 @@
 <template>
-  <div class="cart-page">
-    <!-- ReviewOrder component where cartItems are passed as a prop -->
-    <review-order class="review-order" :cartitems="cartItems" />
+  <div class="cart-container">
+    <!-- Render each cart item dynamically -->
+    <div v-for="(product, index) in cartItems" :key="product.id" class="cart-item">
+      <div class="cart-item-details">
+        <!-- Product Image -->
+        <img :src="product.image" alt="Product" class="product-image" />
 
-    <!-- NextOrder component -->
-    <next-order class="next-order" />
 
-    <!-- Loading indicator -->
-    <div v-if="loading" class="loading-spinner">
-      Loading your cart...
+        <!-- Product Info -->
+        <div class="product-info">
+          <h3 class="product-name">{{ product.name }}</h3>
+          <p class="product-description">{{ product.short_description }}</p>
+          <p class="price">Price: ${{ product.price.toFixed(2) }}</p>
+          <p class="quantity">Quantity: {{ product.quantity }}</p>
+        </div>
+      </div>
+
+
+      <!-- Actions -->
+      <div class="actions">
+        <!-- Add One Button -->
+        <span class="action-icon" @click="addOneItem(index)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle" viewBox="0 0 16 16">
+            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/>
+          </svg>
+        </span>
+
+
+        <!-- Edit Button -->
+        <span class="action-icon" @click="editItem(index)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil" viewBox="0 0 16 16">
+            <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325"/>
+          </svg>
+        </span>
+
+
+        <!-- Remove Button -->
+        <span class="action-icon" @click="deleteItem(index)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+            <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
+            <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/>
+          </svg>
+        </span>
+      </div>
+
+
+      <!-- Total Price -->
+      <p class="total-price">
+        Total: ${{ (product.price * product.quantity).toFixed(2) }}
+      </p>
     </div>
 
 
-    <!-- Error message -->
-    <div v-if="error" class="error-message">
-      {{ error }}
+    <!-- Cart Summary -->
+    <div class="cart-summary">
+      <h3>Cart Summary</h3>
+      <p>Subtotal: ${{ calculateSubtotal().toFixed(2) }}</p>
+      <p>Tax: ${{ calculateTax().toFixed(2) }}</p>
+      <p>Total: ${{ calculateTotal().toFixed(2) }}</p>
     </div>
   </div>
-
-
-  <!-- Footer components -->
-  <footer-menu />
-  <footer-component />
 </template>
 
 
-<script setup lang="ts">
-import { onMounted, computed, ref, watch } from 'vue';
-import { useUserStore } from '@/src/user'; // User store to access user and cartItems
-import { useCartStore } from '@/src/cart'; // Cart store for cart management
-import { useFirestore } from '@/src/firestore'; // Firestore functions
+<script lang="ts">
+import { ref, computed } from 'vue';
+import { useCartStore } from '@/src/cart';
+import { useRouter } from 'vue-router';
+import { useFirestore } from '@/src/firestore'; // Import Firestore helper
+import type { Product } from '@/src/types/Product';
 
-import ReviewOrder from '@/components/revieworder.vue'; // ReviewOrder component
-import NextOrder from '@/components/nextorder.vue'; // NextOrder component
-import FooterComponent from '@/components/Footer.vue'; // Footer component
-import FooterMenu from '@/components/FooterMenu.vue'; // FooterMenu component
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { db } from '~/src/firebase';
 
-// Access the user and cart stores
-const userStore = useUserStore();
-const cartStore = useCartStore();
-const firestore = useFirestore(); // Get the Firestore functions
+export default {
+  setup() {
+    const cartStore = useCartStore();
+    const router = useRouter();
+    const firestore = useFirestore(); // Initialize Firestore helper
 
-// Reactive cart items derived from the cart store
-const cartItems = computed(() => cartStore.cartItems || []); // Use cartStore directly for reactivity
 
-// Loading and error state
-const loading = ref(false);
-const error = ref<string | null>(null);
+    // Access cart items from the store
+    const cartItems = computed(() => cartStore.cartItems as Product[]);
 
-// Sync cart items with Firestore and local store on mount
-onMounted(async () => {
-  if (userStore.user?.email) {
-    loading.value = true;
-    error.value = null;
-    try {
-      const userCart = await firestore.getUserCartFromFirestore(userStore.user.email);
-      cartStore.cartItems = userCart || []; // Populate the cart store
-      console.log('Cart loaded from Firestore:', userCart);
 
-    } catch (err) {
-      error.value = 'Failed to load your cart. Please try again later.';
-      console.error('Error fetching cart items:', err);
-    } finally {
-      loading.value = false;
-    }
-  } else {
-    // Clear the cart if no user is logged in
-    cartStore.cartItems = [];
-  }
-});
+    // Handle adding one more item
+    const addOneItem = async (index: number) => {
+      const item = cartItems.value[index];
+      item.quantity++;
+      item.totalPrice = item.price * item.quantity;
 
-// Watch cartItems, and save to Firestore when they change
-watch(cartItems, async (newCartItems, oldCartItems) => {
-  if (userStore.user?.email) {
-    try {
-      // Only update Firestore if the cart has changed
-      if (JSON.stringify(newCartItems) !== JSON.stringify(oldCartItems)) {
-        await firestore.saveUserCartToFirestore(newCartItems);
-        console.log('Cart saved to Firestore for user:', userStore.user.email);
+
+      // Save updated cart to Firestore
+      try {
+        await firestore.saveUserCartToFirestore(cartItems.value);
+      } catch (error) {
+        console.error('Error updating Firestore on add:', error);
       }
-    } catch (err) {
-      error.value = 'Failed to save your cart. Please try again.';
-      console.error('Error saving cart to Firestore:', err);
-    }
-  }
-});
+    };
 
 
-// Function to update Firestore with the latest cart state
-const updateCartInFirestore = async () => {
-  if (userStore.user?.uid) {
-    try {
-      const userDocRef = doc(db, 'users', userStore.user.uid);
-      await setDoc(userDocRef, { cart: cartStore.cartItems }, { merge: true }); // Only update the cart field
-      console.log('Cart updated in Firestore for user:', userStore.user.email);
-    } catch (err) {
-      console.error('Error updating cart in Firestore:', err);
-      error.value = 'Failed to update your cart. Please try again.';
-    }
-  }
+    // Handle editing an item - Navigate to egg.vue
+    const editItem = (index: number) => {
+      router.push({ name: 'egg' });
+    };
+
+
+    // Handle removing one quantity of an item
+    const deleteItem = async (index: number) => {
+      const item = cartItems.value[index];
+      if (item.quantity > 1) {
+        item.quantity--;
+        item.totalPrice = item.price * item.quantity;
+
+
+        // Save updated cart to Firestore
+        try {
+          await firestore.saveUserCartToFirestore(cartItems.value);
+        } catch (error) {
+          console.error('Error updating Firestore on delete:', error);
+        }
+      } else {
+        try {
+          await cartStore.removeFromCart(item); // Uses the store's logic to remove the item
+        } catch (error) {
+          console.error('Error removing item from Firestore:', error);
+        }
+      }
+    };
+
+
+    // Calculate subtotal
+    const calculateSubtotal = () => {
+      return cartItems.value.reduce((sum, product) => sum + product.price * product.quantity, 0);
+    };
+
+
+    // Calculate tax
+    const calculateTax = () => {
+      const taxRate = 0.06; // Assuming a 6% tax rate
+      return calculateSubtotal() * taxRate;
+    };
+
+
+    // Calculate total
+    const calculateTotal = () => {
+      return calculateSubtotal() + calculateTax();
+    };
+
+
+    return {
+      cartItems,
+      addOneItem,
+      editItem,
+      deleteItem,
+      calculateSubtotal,
+      calculateTax,
+      calculateTotal,
+    };
+  },
 };
-
-watch(cartItems, async (newCartItems, oldCartItems) => {
-  if (userStore.user && userStore.user.email) {
-    if (JSON.stringify(newCartItems) !== JSON.stringify(oldCartItems)) {
-      await firestore.saveUserCartToFirestore(newCartItems);
-      console.log('Cart saved to Firestore for user:', userStore.user.email);
-    }
-  } else {
-    console.warn('User is not logged in. Skipping Firestore update.');
-  }
-});
+</script>
 
 
-</script> 
+
+
+
 
 <style scoped>
-.cart-page {
+.cart-container {
+  max-width: 800px;
+  margin: 0 auto;
   font-family: Arial, sans-serif;
-  color: #333;
-  background-color: #f8f8f8;
-  min-height: 100vh;
+}
+
+
+.cart-item {
+  border: 1px solid #ddd;
+  padding: 16px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  background-color: #fff;
+}
+
+
+.cart-item-details {
   display: flex;
-  gap: 2rem;
-  padding: 2rem;
-  box-sizing: border-box;
+  align-items: center;
 }
 
 
-.review-order {
+.product-image {
+  width: 80px;
+  height: 80px;
+  margin-right: 16px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+
+.product-info {
   flex: 1;
-  max-width: 50%;
 }
 
 
-.next-order {
-  flex: 1;
-  max-width: 50%;
+.product-name {
+  font-size: 18px;
+  font-weight: bold;
+  margin: 0;
 }
 
 
-.loading-spinner {
-  text-align: center;
-  font-size: 1.2em;
+.product-description {
+  font-size: 14px;
   color: #666;
-  margin-top: 20px;
+  margin: 8px 0;
 }
 
 
-.error-message {
-  text-align: center;
-  font-size: 1em;
-  color: red;
-  margin-top: 10px;
+.price,
+.quantity,
+.total-price {
+  font-size: 16px;
+  margin: 4px 0;
 }
-</style> 
+
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+
+.action-icon {
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+}
+
+
+.action-icon:hover {
+  opacity: 0.7;
+}
+
+
+.cart-summary {
+  border-top: 2px solid #ddd;
+  padding-top: 16px;
+  margin-top: 16px;
+}
+
+
+.cart-summary h3 {
+  margin-bottom: 8px;
+}
+
+
+.cart-summary p {
+  font-size: 16px;
+  margin: 4px 0;
+}
+</style>
