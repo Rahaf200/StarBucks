@@ -38,7 +38,12 @@ const userStore = useUserStore();
 
 // Check if user is signed in
 const isSignedIn = computed(() => userStore.isSignedIn);
-const userName = computed(() => `${userStore.user?.firstName} ${userStore.user?.lastName}`);
+const userName = computed(() => {
+  console.log('User Name:', `${userStore.user?.firstName} ${userStore.user?.lastName}`);
+  return userStore.user?.firstName && userStore.user?.lastName
+    ? `${userStore.user.firstName} ${userStore.user.lastName}`
+    : userStore.user?.email || 'Guest';
+});
 
 // Navigation functions
 const goToSignIn = () => {
