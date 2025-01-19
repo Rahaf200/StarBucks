@@ -53,32 +53,42 @@ export default defineComponent({
     const userCredential = await firestore.loginWithEmailAndPassword(username.value, password.value);
     const user = userCredential.user;
 
-    if (user.email) { // Check if email is not null
-      const userCart = await firestore.getUserCartFromFirestore(user.email);
+    if (user.email) {
+      // Use existing Firestore function to get both user details and cart
+      const userCartData = await firestore.getUserCartFromFirestore(user.email);
+      console.log('User Cart Data:', userCartData); // Debugging
 
+      // Assume `userCartData` includes user details like firstName and lastName
       userStore.setUser({
         uid: user.uid,
-        firstName: '', // Assuming you want to fetch firstName and lastName too
-        lastName: '',
+        firstName: userCartData.firstName || '', // Extract firstName from returned data
+        lastName: userCartData.lastName || '',   // Extract lastName from returned data
         email: user.email,
-        cartItems: userCart
+        cartItems: userCartData.cartItems || [], // Extract cart items from returned data
       });
-    
-      if (rememberMe.value) {
-        localStorage.setItem('user', JSON.stringify(user));
-      }
 
+      if (rememberMe.value) {
+        localStorage.setItem(
+          'user',
+          JSON.stringify({
+            uid: user.uid,
+            firstName: userCartData.firstName || '',
+            lastName: userCartData.lastName || '',
+            email: user.email,
+            cartItems: userCartData.cartItems || [],
+          })
+        );
+      }
 
       router.push('/home');
     } else {
       throw new Error('User email is not available');
     }
-   } catch (error: unknown) {
+  } catch (error: unknown) {
     console.error('Error signing in:', error);
-   alert(error instanceof Error ? `Error: ${error.message}` : 'Unknown error occurred.');
+    alert(error instanceof Error ? `Error: ${error.message}` : 'Unknown error occurred.');
   }
-
-    };
+};
     return { username, password, rememberMe, handleSubmit };
   },
 });
